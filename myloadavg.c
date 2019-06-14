@@ -7,19 +7,27 @@
 #include <linux/seqlock.h>
 #include <linux/time.h>
 #include <linux/module.h>
+
 #include <linux/kernel.h>
-#include <linux/delay.h>
-#include <asm/uaccess.h>
-#include <asm/irq.h>
-#include <asm/io.h>
-
-#include <linux/export.h>
-
-#include "/home/fengyuwuzu/myir/MYiR-iMX-Linux/kernel/sched/sched.h"
+#include <linux/hrtimer.h>
+#include <linux/jiffies.h>
 
 #define LOAD_INT(x) ((x) >> FSHIFT)
 #define LOAD_FRAC(x) LOAD_INT(((x) & (FIXED_1-1)) * 100)
-extern void get_avenrun(unsigned long *loads, unsigned long offset, int shift);
+
+static struct hrtimer timer;
+ktime_t kt;
+
+static enum hrtimer_restart        hrtimer_hander(struct hrtimer *timer)
+{
+    printk("yangfei:I am in hrtimer hander\r\n");
+
+    hrtimer_forward(timer,timer->base->get_time(),kt);
+
+    return HRTIMER_RESTART;
+        
+
+}
 static int loadavg_proc_show(struct seq_file *m, void *v)
 {
 	unsigned long avnrun[3];
@@ -50,6 +58,13 @@ static const struct file_operations loadavg_proc_fops = {
 static int __init my_proc_loadavg_init(void)
 {
 	proc_create("my_loadavg", 0, NULL, &loadavg_proc_fops);
+	
+	printk("yangfei:---------%s-----------\r\n",__func__);
+    	kt = ktime_set(0,1000000000);
+    	hrtimer_init(&timer,CLOCK_MONOTONIC,HRTIMER_MODE_REL);
+    	hrtimer_start(&timer,kt,HRTIMER_MODE_REL);
+    	timer.function = hrtimer_hander;
+	
 	return 0;
 }
 fs_initcall(my_proc_loadavg_init);
